@@ -3,7 +3,7 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
-import { Game } from './src/types';
+import { Game } from './src/types.js';
 
 const games = new Map<string, Game>();
 const clients = new Map<WebSocket, { playerId: string; gameCode: string }>();
@@ -146,9 +146,9 @@ async function createServer() {
     app.use(vite.middlewares);
   } else {
     const __dirname = path.dirname(new URL(import.meta.url).pathname);
-    app.use(express.static(path.join(__dirname, 'dist')));
+    app.use(express.static(path.join(__dirname, '../dist')));
     app.get('*', (req, res) => {
-      res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+      res.sendFile(path.join(__dirname, '../dist', 'index.html'));
     });
   }
 
