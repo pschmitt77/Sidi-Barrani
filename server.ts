@@ -2,6 +2,8 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import http from 'http';
+import https from 'https';
+import fs from 'fs';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Game } from './src/types.js';
 
@@ -28,22 +30,42 @@ function broadcastGameState(gameCode: string) {
   });
 }
 
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 async function createServer() {
   const app = express();
   
-  // Stellt sicher, dass Express erkennt, wenn es hinter einem Proxy (Cloud Run, Plesk/Nginx) läuft
   app.set('trust proxy', 1);
 
-  // Automatische Umleitung von HTTP auf HTTPS in Produktion
+  // HTTPS Umleitung, aber NICHT für WebSockets
   app.use((req, res, next) => {
-    if (req.header('x-forwarded-proto') !== 'https' && process.env.NODE_ENV === 'production') {
-      res.redirect(`https://${req.header('host')}${req.url}`);
-    } else {
-      next();
+    const isWebSocket = req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket';
+    if (!isWebSocket && req.header('x-forwarded-proto') !== 'https' && process.env.NODE_ENV === 'production') {
+      return res.redirect(`https://${req.header('host')}${req.url}`);
     }
+    next();
   });
 
-  const server = http.createServer(app);
+  const server = (() => {
+    // Standardpfade für Zertifikate (können über ENV überschrieben werden)
+    const keyPath = process.env.SSL_KEY_PATH || './certs/server.key';
+    const certPath = process.env.SSL_CERT_PATH || './certs/server.crt';
+
+    if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+      console.log('SSL-Zertifikate gefunden. Starte HTTPS-Server...');
+      return https.createServer({
+        key: fs.readFileSync(keyPath),
+        cert: fs.readFileSync(certPath)
+      }, app);
+    } else {
+      console.log('Keine SSL-Zertifikate gefunden (Pfade: ' + keyPath + ', ' + certPath + '). Starte HTTP-Server...');
+      return http.createServer(app);
+    }
+  })();
+
   const wss = new WebSocketServer({ server });
 
   wss.on('connection', (ws) => {
@@ -158,7 +180,6 @@ async function createServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const __dirname = path.dirname(new URL(import.meta.url).pathname);
     app.use(express.static(path.join(__dirname, '../dist')));
     app.get('*', (req, res) => {
       res.sendFile(path.join(__dirname, '../dist', 'index.html'));

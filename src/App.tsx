@@ -242,9 +242,9 @@ export default function App() {
   const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}`;
-    const socket = new WebSocket(wsUrl);
+    // Erkennt automatisch ob ws:// oder wss:// genutzt werden muss
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const socket = new WebSocket(`${wsProtocol}//${window.location.host}`);
     ws.current = socket;
 
     socket.onopen = () => {

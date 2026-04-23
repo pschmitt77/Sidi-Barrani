@@ -55,6 +55,7 @@ Ein Gebot besteht aus:
 - **Frontend**: React mit TypeScript.
 - **Sicherheit**:
   - Unterstützung für HTTPS/SSL (WSS für WebSockets).
+  - Automatisches Fallback: Nutzt natives HTTPS, wenn Zertifikate in `./certs/` vorhanden sind, sonst HTTP (ideal für Betrieb hinter Proxys).
+  - Pfade zu Zertifikaten über `SSL_KEY_PATH` und `SSL_CERT_PATH` konfigurierbar.
   - Automatische Umleitung von HTTP auf HTTPS in der Produktionsumgebung.
-  - Erkennung von Proxy-Headern (`x-forwarded-proto`), um korrekt in Shared-Hosting-Umgebungen (Plesk/Nginx) zu funktionieren.
 - **Backend**: Node.js mit Express und ws.
