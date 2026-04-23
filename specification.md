@@ -14,8 +14,10 @@ Die Anwendung ist eine mobile Webseite, die Spieler des Kartenspiels "Sidi Barra
 - Der Spieler, der das Spiel erstellt, wird als "Ersteller" gekennzeichnet.
 
 ### 2.2. Spiel beitreten
-- Andere Spieler können einem bestehenden Spiel über den 4-stelligen Code beitreten.
-- Jeder Spieler muss vor dem Erstellen oder Beitreten seinen Namen angeben.
+- Auf der Startseite wählt der Spieler zwischen "Eröffnen" und "Beitreten".
+- Beim **Eröffnen**: Nur Angabe des Namens erforderlich.
+- Beim **Beitreten**: Angabe des Namens und des 4-stelligen Spiel-Codes erforderlich.
+- Die Eingabefelder sind modular und werden erst nach Auswahl des Modus angezeigt.
 
 ### 2.3. Lobby
 - Vor dem Spielstart werden alle verbundenen Spieler in einer Lobby angezeigt.
@@ -51,4 +53,8 @@ Ein Gebot besteht aus:
 - **Architektur**: Client-Server-Modell
 - **Kommunikation**: Echtzeit-Kommunikation über WebSockets.
 - **Frontend**: React mit TypeScript.
+- **Sicherheit**:
+  - Unterstützung für HTTPS/SSL (WSS für WebSockets).
+  - Automatische Umleitung von HTTP auf HTTPS in der Produktionsumgebung.
+  - Erkennung von Proxy-Headern (`x-forwarded-proto`), um korrekt in Shared-Hosting-Umgebungen (Plesk/Nginx) zu funktionieren.
 - **Backend**: Node.js mit Express und ws.

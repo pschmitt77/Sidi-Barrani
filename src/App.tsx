@@ -14,6 +14,7 @@ const HomePage = ({ ws, setPlayerId, setGame, isConnected }: {
 }) => {
   const [playerName, setPlayerName] = useState('');
   const [joinCode, setJoinCode] = useState('');
+  const [mode, setMode] = useState<'select' | 'create' | 'join'>('select');
 
   const handleCreateGame = () => {
     if (playerName.trim() && ws) {
@@ -31,32 +32,90 @@ const HomePage = ({ ws, setPlayerId, setGame, isConnected }: {
     <div className="p-4 bg-gray-100 min-h-screen flex flex-col items-center justify-center">
       <div className="w-full max-w-sm bg-white p-6 rounded-lg shadow-md">
         <h1 className="text-2xl font-bold text-center mb-6">Sidi Barrani Bidding</h1>
-        <input
-          type="text"
-          value={playerName}
-          onChange={(e) => setPlayerName(e.target.value)}
-          placeholder="Dein Name"
-          className="w-full p-2 border rounded mb-4"
-        />
-                <button onClick={handleCreateGame} className="w-full bg-blue-500 text-white p-2 rounded mb-4 hover:bg-blue-600 disabled:bg-gray-400" disabled={!isConnected || !playerName.trim()}>
-          Neues Spiel erstellen
-        </button>
-        <div className="flex items-center my-4">
-            <hr className="flex-grow border-t"/>
-            <span className="px-2 text-gray-500">oder</span>
-            <hr className="flex-grow border-t"/>
-        </div>
-        <input
-          type="text"
-          value={joinCode}
-          onChange={(e) => setJoinCode(e.target.value.toLowerCase())}
-          placeholder="Spiel-Code beitreten"
-          className="w-full p-2 border rounded mb-4"
-          maxLength={4}
-        />
-                <button onClick={handleJoinGame} className="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 disabled:bg-gray-400" disabled={!isConnected || !playerName.trim() || !joinCode.trim()}>
-          Spiel beitreten
-        </button>
+        
+        {mode === 'select' && (
+          <div className="flex flex-col gap-4">
+            <button 
+              onClick={() => setMode('create')}
+              className="w-full bg-blue-500 text-white py-4 px-2 rounded-lg font-semibold hover:bg-blue-600 transition-colors shadow-sm"
+              disabled={!isConnected}
+            >
+              Neues Spiel eröffnen
+            </button>
+            <button 
+              onClick={() => setMode('join')}
+              className="w-full bg-green-500 text-white py-4 px-2 rounded-lg font-semibold hover:bg-green-600 transition-colors shadow-sm"
+              disabled={!isConnected}
+            >
+              Einem Spiel beitreten
+            </button>
+            {!isConnected && (
+              <p className="text-center text-red-500 text-sm">Verbindung zum Server wird aufgebaut...</p>
+            )}
+          </div>
+        )}
+
+        {mode === 'create' && (
+          <div className="flex flex-col">
+            <h2 className="text-lg font-semibold mb-4 text-center">Spiel eröffnen</h2>
+            <input
+              type="text"
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              placeholder="Dein Name"
+              className="w-full p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 outline-none"
+              autoFocus
+            />
+            <button 
+              onClick={handleCreateGame} 
+              className="w-full bg-blue-500 text-white p-3 rounded-lg font-semibold hover:bg-blue-600 disabled:bg-gray-400 mb-4" 
+              disabled={!isConnected || !playerName.trim()}
+            >
+              Spiel erstellen
+            </button>
+            <button 
+              onClick={() => setMode('select')}
+              className="text-gray-500 hover:text-gray-700 text-sm font-medium"
+            >
+              &larr; Zurück
+            </button>
+          </div>
+        )}
+
+        {mode === 'join' && (
+          <div className="flex flex-col">
+            <h2 className="text-lg font-semibold mb-4 text-center">Spiel beitreten</h2>
+            <input
+              type="text"
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              placeholder="Dein Name"
+              className="w-full p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-green-500 outline-none"
+              autoFocus
+            />
+            <input
+              type="text"
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value.toLowerCase())}
+              placeholder="4-stelliger Spiel-Code"
+              className="w-full p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-green-500 outline-none text-center font-mono text-xl tracking-widest"
+              maxLength={4}
+            />
+            <button 
+              onClick={handleJoinGame} 
+              className="w-full bg-green-500 text-white p-3 rounded-lg font-semibold hover:bg-green-600 disabled:bg-gray-400 mb-4" 
+              disabled={!isConnected || !playerName.trim() || !joinCode.trim()}
+            >
+              Beitreten
+            </button>
+            <button 
+              onClick={() => setMode('select')}
+              className="text-gray-500 hover:text-gray-700 text-sm font-medium"
+            >
+              &larr; Zurück
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -183,7 +242,8 @@ export default function App() {
   const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    const wsUrl = window.location.origin.replace(/^http/, 'ws');
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}`;
     const socket = new WebSocket(wsUrl);
     ws.current = socket;
 

@@ -30,6 +30,19 @@ function broadcastGameState(gameCode: string) {
 
 async function createServer() {
   const app = express();
+  
+  // Stellt sicher, dass Express erkennt, wenn es hinter einem Proxy (Cloud Run, Plesk/Nginx) läuft
+  app.set('trust proxy', 1);
+
+  // Automatische Umleitung von HTTP auf HTTPS in Produktion
+  app.use((req, res, next) => {
+    if (req.header('x-forwarded-proto') !== 'https' && process.env.NODE_ENV === 'production') {
+      res.redirect(`https://${req.header('host')}${req.url}`);
+    } else {
+      next();
+    }
+  });
+
   const server = http.createServer(app);
   const wss = new WebSocketServer({ server });
 
