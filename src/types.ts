@@ -12,7 +12,7 @@ export enum SpecialGameType {
 
 export type GameType = Suit | SpecialGameType;
 
-export type BidValue = number | 'Match';
+export type BidValue = number | 'Match' | 'Pass';
 
 export interface Bid {
   playerId: string;

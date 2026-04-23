@@ -31,9 +31,9 @@ Die Anwendung ist eine mobile Webseite, die Spieler des Kartenspiels "Sidi Barra
 - Nach dem Start wird die Biet-Oberfläche für alle Spieler aktiviert.
 
 ### 3.2. Bietvorgang
-- Die Spieler können in beliebiger Reihenfolge bieten.
+- Die Spieler können in beliebiger Reihenfolge bieten oder passen.
+- Das Interface schlägt automatisch den nächsthöheren gültigen Wert basierend auf dem aktuellen Höchstgebot vor.
 - Gebote werden in Echtzeit übermittelt und sind sofort für alle anderen Spieler sichtbar.
-- Ein einmal abgegebenes Gebot kann nicht korrigiert werden.
 
 ### 3.3. Gebots-Komponenten
 Ein Gebot besteht aus:
@@ -41,8 +41,9 @@ Ein Gebot besteht aus:
   - Farben (Schweizer Jasskarten): Rosen, Eicheln, Schellen, Schilten
   - Spielarten: Obeabe, Uneufe
 - **Wert**:
-  - Ein Vielfaches von 10, bis zu einem Maximum von 150.
-  - Alternativ das Gebot "Match".
+  - Ein Vielfaches von 10 (10 bis 150).
+  - Das Höchstgebot "Match" (entspricht 157 Punkten).
+- **Passen**: Ermöglicht es, kein Gebot abzugeben. "Passe" wird im Verlauf angezeigt.
 
 ### 3.4. Neue Bietrunde
 - Der Ersteller kann jederzeit eine neue Bietrunde starten.
@@ -59,3 +60,12 @@ Ein Gebot besteht aus:
   - Pfade zu Zertifikaten über `SSL_KEY_PATH` und `SSL_CERT_PATH` konfigurierbar.
   - Automatische Umleitung von HTTP auf HTTPS in der Produktionsumgebung.
 - **Backend**: Node.js mit Express und ws.
+- **Persistenz**:
+  - Daten werden flüchtig im RAM gespeichert.
+  - Inaktive Spiele werden nach **24 Stunden** automatisch gelöscht.
+- **Design (Jass-Farben)**:
+  - Eicheln: Grün
+  - Schellen: Gelb/Gold
+  - Schilten: Blau
+  - Rosen: Rot
+  - Obeabe/Uneufe: Grau / Neutral

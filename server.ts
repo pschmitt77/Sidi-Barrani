@@ -7,7 +7,31 @@ import fs from 'fs';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Game } from './src/types.js';
 
-const games = new Map<string, Game>();
+interface InternalGame extends Game {
+  lastActivity: number;
+}
+
+const games = new Map<string, InternalGame>();
+
+// Bereinigung: Spiele nach 24 Stunden Inaktivität löschen
+setInterval(() => {
+  const now = Date.now();
+  const ONE_DAY = 24 * 60 * 60 * 1000;
+  for (const [code, game] of games.entries()) {
+    if (now - game.lastActivity > ONE_DAY) {
+      console.log(`Lösche inaktives Spiel: ${code}`);
+      games.delete(code);
+    }
+  }
+}, 60 * 60 * 1000); // Check jede Stunde
+
+function updateActivity(gameCode: string) {
+  const game = games.get(gameCode);
+  if (game) {
+    game.lastActivity = Date.now();
+  }
+}
+
 const clients = new Map<WebSocket, { playerId: string; gameCode: string }>();
 
 function generateGameCode(): string {
@@ -81,12 +105,13 @@ async function createServer() {
             const { playerName } = payload;
             const playerId = `player_${Math.random().toString(36).slice(2, 9)}`;
             const gameCode = generateGameCode();
-            const newGame: Game = {
+            const newGame: InternalGame = {
               gameCode,
               players: [{ id: playerId, name: playerName }],
               bids: [],
               creatorId: playerId,
               started: false,
+              lastActivity: Date.now()
             };
             games.set(gameCode, newGame);
             clients.set(ws, { playerId, gameCode });
@@ -96,9 +121,8 @@ async function createServer() {
           case 'startGame': {
             const { gameCode } = payload;
             const game = games.get(gameCode);
-            // Basic validation: only creator can start
-            // In a real app, you'd check against the player's ID from the websocket connection
             if (game) {
+              updateActivity(gameCode);
               game.started = true;
               broadcastGameState(gameCode);
             } else {
@@ -110,6 +134,7 @@ async function createServer() {
             const { gameCode, bid } = payload;
             const game = games.get(gameCode);
             if (game && game.started) {
+              updateActivity(gameCode);
               game.bids.push(bid);
               broadcastGameState(gameCode);
             } else {
@@ -120,8 +145,8 @@ async function createServer() {
           case 'newRound': {
             const { gameCode } = payload;
             const game = games.get(gameCode);
-            // Add validation to ensure only creator can start a new round
             if (game) {
+              updateActivity(gameCode);
               game.bids = [];
               broadcastGameState(gameCode);
             } else {
@@ -133,6 +158,7 @@ async function createServer() {
             const { gameCode, playerName } = payload;
             const game = games.get(gameCode);
             if (game) {
+              updateActivity(gameCode);
               if (game.players.length >= 4) {
                 ws.send(JSON.stringify({ type: 'error', message: 'Game is full' }));
                 return;

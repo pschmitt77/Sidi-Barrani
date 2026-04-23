@@ -176,59 +176,152 @@ const GamePage = ({ game, playerId, ws }: { game: Game, playerId: string, ws: We
 
 const BiddingComponent = ({ game, playerId, ws }: { game: Game, playerId: string, ws: WebSocket | null }) => {
   const [selectedGameType, setSelectedGameType] = useState<GameType | ''>('');
-  const [bidValue, setBidValue] = useState<number | ''>('');
-  const [isMatch, setIsMatch] = useState(false);
+  const [bidValue, setBidValue] = useState<number | 'Match'>('');
 
-  const handleBid = () => {
-    if (!selectedGameType || (bidValue === '' && !isMatch) || !ws) return;
+  // Helper zum Vergleich von Werten
+  const getNumericValue = (val: BidValue): number => {
+    if (val === 'Match') return 157;
+    if (val === 'Pass') return -1;
+    return val;
+  };
+
+  // Höchstes aktuelles Gebat finden (Pass ignorieren)
+  const currentHighestValue = Math.max(
+    ...game.bids
+      .filter(b => b.value !== 'Pass')
+      .map(b => getNumericValue(b.value)),
+    0
+  );
+
+  // Liste aller möglichen Werte
+  const allValues: (number | 'Match')[] = [
+    ...Array.from({ length: 15 }, (_, i) => (i + 1) * 10),
+    'Match'
+  ];
+
+  // Nur Werte erlauben, die höher als das aktuelle Gebot sind
+  const availableValues = allValues.filter(val => getNumericValue(val) > currentHighestValue);
+
+  // Automatische Vorauswahl des nächsten Wertes
+  useEffect(() => {
+    if (availableValues.length > 0) {
+      // Wenn nichts gewählt oder das Gewählte nicht mehr gültig ist: Nächsthöheren wählen
+      if (bidValue === '' || getNumericValue(bidValue) <= currentHighestValue) {
+        setBidValue(availableValues[0]);
+      }
+    } else if (currentHighestValue >= 157) {
+      setBidValue('');
+    }
+  }, [currentHighestValue, availableValues, bidValue]);
+
+  const handleBid = (isPass: boolean = false) => {
+    if (!ws) return;
+
+    if (isPass) {
+      const passBid: Bid = {
+        playerId,
+        playerName: game.players.find(p => p.id === playerId)?.name || 'Unknown',
+        gameType: Suit.ROSEN, // Dummy suit for Pass
+        value: 'Pass',
+      };
+      ws.send(JSON.stringify({ type: 'placeBid', payload: { gameCode: game.gameCode, bid: passBid } }));
+      return;
+    }
+
+    if (!selectedGameType || bidValue === '') return;
 
     const bid: Bid = {
       playerId,
       playerName: game.players.find(p => p.id === playerId)?.name || 'Unknown',
       gameType: selectedGameType,
-      value: isMatch ? 'Match' : (bidValue as number),
+      value: bidValue,
     };
 
     ws.send(JSON.stringify({ type: 'placeBid', payload: { gameCode: game.gameCode, bid } }));
-    // Reset form
+    // Reset selection where appropriate, but keep auto-suggest working
     setSelectedGameType('');
-    setBidValue('');
-    setIsMatch(false);
   };
 
-  const bidValues = Array.from({ length: (150 - 10) / 10 + 1 }, (_, i) => 10 + i * 10);
+  const getSuitColor = (suit: string) => {
+    switch (suit) {
+      case 'Eicheln': return 'bg-[#1b4332] hover:bg-[#2d6a4f]'; // Dunkelgrün
+      case 'Schellen': return 'bg-[#f9a825] hover:bg-[#fbc02d] text-black'; // Goldgelb
+      case 'Schilten': return 'bg-[#00509d] hover:bg-[#003f88]'; // Blau
+      case 'Rosen': return 'bg-[#9d0208] hover:bg-[#6a040f]'; // Rot
+      default: return 'bg-gray-600 hover:bg-gray-700'; // Obeabe / Uneufe
+    }
+  };
 
   return (
     <div>
       <h2 className="text-xl font-semibold mb-2">Bieten</h2>
       <div className="grid grid-cols-2 gap-2 mb-2">
         {(Object.values(Suit) as GameType[]).concat(Object.values(SpecialGameType)).map(gt => (
-          <button key={gt} onClick={() => setSelectedGameType(gt)} className={`p-2 rounded text-white ${selectedGameType === gt ? 'bg-indigo-600' : 'bg-indigo-400'}`}>
+          <button 
+            key={gt} 
+            onClick={() => setSelectedGameType(gt)} 
+            className={`p-3 rounded-lg text-white font-bold transition-all transform active:scale-95 shadow-sm ${selectedGameType === gt ? 'ring-4 ring-black ring-opacity-50' : ''} ${getSuitColor(gt as string)}`}
+          >
             {gt}
           </button>
         ))}
       </div>
-      <div className="flex gap-2 mb-2">
-        <select value={bidValue} onChange={e => setBidValue(Number(e.target.value))} className="flex-grow p-2 border rounded" disabled={isMatch}>
-          <option value="" disabled>Wert</option>
-          {bidValues.map(val => <option key={val} value={val}>{val}</option>)}
-        </select>
-        <label className="flex items-center gap-2 p-2 border rounded">
-          <input type="checkbox" checked={isMatch} onChange={e => setIsMatch(e.target.checked)} />
-          Match
-        </label>
-      </div>
-      <button onClick={handleBid} className="w-full bg-red-500 text-white p-2 rounded hover:bg-red-600" disabled={!selectedGameType || (bidValue === '' && !isMatch)}>
-        Bieten
-      </button>
-
-      <div className="mt-4">
-        <h3 className="text-lg font-semibold">Aktuelle Gebote</h3>
-        <ul className="list-disc list-inside bg-gray-50 p-3 rounded mt-2">
-          {game.bids.map((b, i) => (
-            <li key={i}>{b.playerName}: {b.gameType} {b.value}</li>
+      <div className="mb-4">
+        <select 
+          value={bidValue} 
+          onChange={e => {
+            const val = e.target.value;
+            setBidValue(val === 'Match' ? 'Match' : Number(val));
+          }} 
+          className="w-full p-3 border-2 rounded-lg bg-white font-semibold outline-none focus:border-indigo-500" 
+          disabled={availableValues.length === 0}
+        >
+          <option value="" disabled>Wert wählen...</option>
+          {availableValues.map(val => (
+            <option key={val} value={val}>{val === 'Match' ? 'Match (157)' : val}</option>
           ))}
-        </ul>
+        </select>
+      </div>
+      
+      <div className="flex gap-2">
+        <button 
+          onClick={() => handleBid(true)} 
+          className="flex-1 bg-gray-400 text-white p-4 rounded-xl font-bold text-lg hover:bg-gray-500 transition-all shadow-md active:scale-95"
+        >
+          Ich passe
+        </button>
+        <button 
+          onClick={() => handleBid(false)} 
+          className="flex-[2] bg-slate-800 text-white p-4 rounded-xl font-bold text-lg hover:bg-slate-900 transition-all shadow-md active:scale-95 disabled:opacity-50" 
+          disabled={!selectedGameType || bidValue === '' || availableValues.length === 0}
+        >
+          Bieten
+        </button>
+      </div>
+
+      <div className="mt-8">
+        <h3 className="text-lg font-bold border-b-2 border-gray-100 pb-2 mb-3 px-1 flex items-center">
+          <span className="mr-2">📋</span> Aktuelle Gebote
+        </h3>
+        <div className="space-y-2">
+          {game.bids.length === 0 ? (
+            <p className="text-gray-400 italic text-center py-4 bg-gray-50 rounded-lg">Noch keine Gebote vorhanden</p>
+          ) : (
+            game.bids.map((b, i) => (
+              <div 
+                key={i} 
+                className={`p-3 rounded-lg border-l-4 shadow-sm flex justify-between items-center ${
+                  b.playerId === playerId ? 'bg-indigo-50 border-indigo-500' : 'bg-white border-gray-300'
+                } ${b.value === 'Pass' ? 'opacity-60' : ''}`}
+              >
+                <span className="font-bold">{b.playerName}</span>
+                <span className={`px-3 py-1 rounded-full text-sm font-mono font-bold ${b.value === 'Pass' ? 'bg-gray-200 text-gray-500' : 'bg-gray-100'}`}>
+                  {b.value === 'Pass' ? 'Passe' : `${b.gameType} ${b.value === 'Match' ? 'Match' : b.value}`}
+                </span>
+              </div>
+            )).reverse() 
+          )}
+        </div>
       </div>
     </div>
   );
