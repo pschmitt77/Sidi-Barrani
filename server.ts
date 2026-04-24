@@ -2,8 +2,6 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import http from 'http';
-import https from 'https';
-import fs from 'fs';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Game } from './src/types.js';
 
@@ -73,22 +71,7 @@ async function createServer() {
     next();
   });
 
-  const server = (() => {
-    // Standardpfade für Zertifikate (können über ENV überschrieben werden)
-    const keyPath = process.env.SSL_KEY_PATH || './certs/server.key';
-    const certPath = process.env.SSL_CERT_PATH || './certs/server.crt';
-
-    if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
-      console.log('SSL-Zertifikate gefunden. Starte HTTPS-Server...');
-      return https.createServer({
-        key: fs.readFileSync(keyPath),
-        cert: fs.readFileSync(certPath)
-      }, app);
-    } else {
-      console.log('Keine SSL-Zertifikate gefunden (Pfade: ' + keyPath + ', ' + certPath + '). Starte HTTP-Server...');
-      return http.createServer(app);
-    }
-  })();
+  const server = http.createServer(app);
 
   const wss = new WebSocketServer({ server });
 
