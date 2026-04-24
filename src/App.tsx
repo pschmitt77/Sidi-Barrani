@@ -32,7 +32,7 @@ const HomePage = ({ socket, setPlayerId, setGame, isConnected }: {
   return (
     <div className="p-4 bg-gray-100 min-h-screen flex flex-col items-center justify-center">
       <div className="w-full max-w-sm bg-white p-6 rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold text-center mb-6">Sidi Barrani Bidding</h1>
+        <h1 className="text-3xl font-bold text-center mb-6 text-slate-800">Sidi Barrani</h1>
         
         {mode === 'select' && (
           <div className="flex flex-col gap-4">
@@ -156,13 +156,14 @@ const GamePage = ({ game, playerId, socket }: { game: Game, playerId: string, so
 
         <div className="mb-4">
           <h2 className="text-xl font-semibold mb-2">Spieler</h2>
-          <ul className="list-disc list-inside bg-gray-50 p-3 rounded">
+          <div className="grid grid-cols-2 gap-2">
             {game.players.map(p => (
-              <li key={p.id} className={`${p.id === playerId ? 'font-bold' : ''}`}>
-                {p.name} {p.id === game.creatorId && '(Ersteller)'}
-              </li>
+              <div key={p.id} className={`p-2 rounded-md bg-white shadow-sm border border-gray-200 flex items-center justify-between ${p.id === playerId ? 'font-bold text-indigo-700' : 'text-gray-700'}`}>
+                <span className="truncate">{p.name}</span>
+                {p.id === game.creatorId && <span className="text-[10px] uppercase tracking-wider text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded ml-2">Ersteller</span>}
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
 
         {game.started ? (
@@ -178,6 +179,7 @@ const GamePage = ({ game, playerId, socket }: { game: Game, playerId: string, so
 const BiddingComponent = ({ game, playerId, socket }: { game: Game, playerId: string, socket: Socket | null }) => {
   const [selectedGameType, setSelectedGameType] = useState<GameType | ''>('');
   const [bidValue, setBidValue] = useState<number | 'Match'>('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   // Helper zum Vergleich von Werten
   const getNumericValue = (val: BidValue): number => {
@@ -217,6 +219,7 @@ const BiddingComponent = ({ game, playerId, socket }: { game: Game, playerId: st
 
   const handleBid = (isPass: boolean = false) => {
     if (!socket) return;
+    setErrorMsg('');
 
     if (isPass) {
       const passBid: Bid = {
@@ -229,7 +232,12 @@ const BiddingComponent = ({ game, playerId, socket }: { game: Game, playerId: st
       return;
     }
 
-    if (!selectedGameType || bidValue === '') return;
+    if (!selectedGameType) {
+      setErrorMsg('Bitte wähle eine Farbe oder ein Spiel.');
+      return;
+    }
+
+    if (bidValue === '') return;
 
     const bid: Bid = {
       playerId,
@@ -243,38 +251,43 @@ const BiddingComponent = ({ game, playerId, socket }: { game: Game, playerId: st
     setSelectedGameType('');
   };
 
-  const getSuitColor = (suit: string) => {
+  const getSuitDisplay = (suit: string) => {
     switch (suit) {
-      case 'Eicheln': return 'bg-[#1b4332] hover:bg-[#2d6a4f]'; // Dunkelgrün
-      case 'Schellen': return 'bg-[#f9a825] hover:bg-[#fbc02d] text-black'; // Goldgelb
-      case 'Schilten': return 'bg-[#00509d] hover:bg-[#003f88]'; // Blau
-      case 'Rosen': return 'bg-[#9d0208] hover:bg-[#6a040f]'; // Rot
-      default: return 'bg-gray-600 hover:bg-gray-700'; // Obeabe / Uneufe
+      case 'Eicheln': return { color: 'bg-[#1b4332] hover:bg-[#2d6a4f] text-white', label: 'Eicheln' };
+      case 'Schellen': return { color: 'bg-[#f9a825] hover:bg-[#fbc02d] text-black', label: 'Schellen' };
+      case 'Schilten': return { color: 'bg-[#00509d] hover:bg-[#003f88] text-white', label: 'Schilten' };
+      case 'Rosen': return { color: 'bg-[#9d0208] hover:bg-[#6a040f] text-white', label: 'Rosen' };
+      case 'Obeabe': return { color: 'bg-gray-600 hover:bg-gray-700 text-white', label: 'Obeabe' };
+      case 'Uneufe': return { color: 'bg-gray-600 hover:bg-gray-700 text-white', label: 'Uneufe' };
+      default: return { color: 'bg-gray-600 hover:bg-gray-700 text-white', label: suit };
     }
   };
 
   return (
     <div>
       <h2 className="text-xl font-semibold mb-2">Bieten</h2>
-      <div className="grid grid-cols-2 gap-2 mb-2">
-        {(Object.values(Suit) as GameType[]).concat(Object.values(SpecialGameType)).map(gt => (
-          <button 
-            key={gt} 
-            onClick={() => setSelectedGameType(gt)} 
-            className={`p-3 rounded-lg text-white font-bold transition-all transform active:scale-95 shadow-sm ${selectedGameType === gt ? 'ring-4 ring-black ring-opacity-50' : ''} ${getSuitColor(gt as string)}`}
-          >
-            {gt}
-          </button>
-        ))}
+      <div className="grid grid-cols-2 gap-2 mb-6">
+        {(Object.values(Suit) as GameType[]).concat(Object.values(SpecialGameType)).map(gt => {
+          const display = getSuitDisplay(gt as string);
+          return (
+            <button 
+              key={gt} 
+              onClick={() => { setSelectedGameType(gt); setErrorMsg(''); }} 
+              className={`p-3 rounded-lg font-bold transition-all transform active:scale-95 shadow-sm ${selectedGameType === gt ? 'ring-4 ring-black ring-opacity-50' : ''} ${display.color}`}
+            >
+              {display.label}
+            </button>
+          );
+        })}
       </div>
-      <div className="mb-4">
+      <div className="flex gap-2 mb-2">
         <select 
           value={bidValue} 
           onChange={e => {
             const val = e.target.value;
             setBidValue(val === 'Match' ? 'Match' : Number(val));
           }} 
-          className="w-full p-3 border-2 rounded-lg bg-white font-semibold outline-none focus:border-indigo-500" 
+          className="flex-1 p-3 border-2 rounded-lg bg-white font-semibold outline-none focus:border-indigo-500" 
           disabled={availableValues.length === 0}
         >
           <option value="" disabled>Wert wählen...</option>
@@ -282,27 +295,27 @@ const BiddingComponent = ({ game, playerId, socket }: { game: Game, playerId: st
             <option key={val} value={val}>{val === 'Match' ? 'Match (157)' : val}</option>
           ))}
         </select>
-      </div>
-      
-      <div className="flex gap-2">
         <button 
           onClick={() => handleBid(true)} 
-          className="flex-1 bg-gray-400 text-white p-4 rounded-xl font-bold text-lg hover:bg-gray-500 transition-all shadow-md active:scale-95"
+          className="flex-1 bg-gray-400 text-white p-3 rounded-lg font-bold hover:bg-gray-500 transition-all shadow-sm active:scale-95"
         >
           Ich passe
         </button>
-        <button 
-          onClick={() => handleBid(false)} 
-          className="flex-[2] bg-slate-800 text-white p-4 rounded-xl font-bold text-lg hover:bg-slate-900 transition-all shadow-md active:scale-95 disabled:opacity-50" 
-          disabled={!selectedGameType || bidValue === '' || availableValues.length === 0}
-        >
-          Bieten
-        </button>
       </div>
+      
+      {errorMsg && <p className="text-red-500 text-sm font-semibold mb-2 text-center">{errorMsg}</p>}
+
+      <button 
+        onClick={() => handleBid(false)} 
+        className="w-full bg-slate-800 text-white p-3 rounded-lg font-bold hover:bg-slate-900 transition-all shadow-sm active:scale-95 disabled:opacity-50" 
+        disabled={bidValue === '' || availableValues.length === 0}
+      >
+        Bieten
+      </button>
 
       <div className="mt-8">
         <h3 className="text-lg font-bold border-b-2 border-gray-100 pb-2 mb-3 px-1 flex items-center">
-          <span className="mr-2">📋</span> Aktuelle Gebote
+          Aktuelle Gebote
         </h3>
         <div className="space-y-2">
           {game.bids.length === 0 ? (
