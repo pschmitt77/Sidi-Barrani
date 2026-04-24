@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import http from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
+import { Server, Socket } from 'socket.io';
 import { Game } from './src/types.js';
 
 interface InternalGame extends Game {
@@ -30,7 +30,7 @@ function updateActivity(gameCode: string) {
   }
 }
 
-const clients = new Map<WebSocket, { playerId: string; gameCode: string }>();
+const clients = new Map<Socket, { playerId: string; gameCode: string }>();
 
 function generateGameCode(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -41,15 +41,10 @@ function generateGameCode(): string {
   return games.has(code) ? generateGameCode() : code;
 }
 
-function broadcastGameState(gameCode: string) {
+function broadcastGameState(io: Server, gameCode: string) {
   const game = games.get(gameCode);
   if (!game) return;
-  const gameState = JSON.stringify({ type: 'gameStateUpdate', game });
-  clients.forEach((info, client) => {
-    if (info.gameCode === gameCode && client.readyState === WebSocket.OPEN) {
-      client.send(gameState);
-    }
-  });
+  io.to(gameCode).emit('gameStateUpdate', { game });
 }
 
 import { fileURLToPath } from 'url';
@@ -73,98 +68,91 @@ async function createServer() {
 
   const server = http.createServer(app);
 
-  const wss = new WebSocketServer({ server });
+  const io = new Server(server, {
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST"]
+    }
+  });
 
-  wss.on('connection', (ws) => {
-    console.log('Client connected');
+  io.on('connection', (socket) => {
+    console.log('Client connected:', socket.id);
 
-    ws.on('message', (message) => {
+    socket.on('createGame', (payload) => {
       try {
-        const data = JSON.parse(message.toString());
-        const { type, payload } = data;
-
-        switch (type) {
-          case 'createGame': {
-            const { playerName } = payload;
-            const playerId = `player_${Math.random().toString(36).slice(2, 9)}`;
-            const gameCode = generateGameCode();
-            const newGame: InternalGame = {
-              gameCode,
-              players: [{ id: playerId, name: playerName }],
-              bids: [],
-              creatorId: playerId,
-              started: false,
-              lastActivity: Date.now()
-            };
-            games.set(gameCode, newGame);
-            clients.set(ws, { playerId, gameCode });
-            ws.send(JSON.stringify({ type: 'gameCreated', game: newGame, playerId }));
-            break;
-          }
-          case 'startGame': {
-            const { gameCode } = payload;
-            const game = games.get(gameCode);
-            if (game) {
-              updateActivity(gameCode);
-              game.started = true;
-              broadcastGameState(gameCode);
-            } else {
-              // Handle game not found
-            }
-            break;
-          }
-          case 'placeBid': {
-            const { gameCode, bid } = payload;
-            const game = games.get(gameCode);
-            if (game && game.started) {
-              updateActivity(gameCode);
-              game.bids.push(bid);
-              broadcastGameState(gameCode);
-            } else {
-              // Handle error: game not found or not started
-            }
-            break;
-          }
-          case 'newRound': {
-            const { gameCode } = payload;
-            const game = games.get(gameCode);
-            if (game) {
-              updateActivity(gameCode);
-              game.bids = [];
-              broadcastGameState(gameCode);
-            } else {
-              // Handle game not found
-            }
-            break;
-          }
-          case 'joinGame': {
-            const { gameCode, playerName } = payload;
-            const game = games.get(gameCode);
-            if (game) {
-              updateActivity(gameCode);
-              if (game.players.length >= 4) {
-                ws.send(JSON.stringify({ type: 'error', message: 'Game is full' }));
-                return;
-              }
-              const playerId = `player_${Math.random().toString(36).slice(2, 9)}`;
-              game.players.push({ id: playerId, name: playerName });
-              clients.set(ws, { playerId, gameCode });
-              ws.send(JSON.stringify({ type: 'gameJoined', game, playerId }));
-              broadcastGameState(gameCode);
-            } else {
-              ws.send(JSON.stringify({ type: 'error', message: 'Game not found' }));
-            }
-            break;
-          }
-        }
+        const { playerName } = payload;
+        const playerId = `player_${Math.random().toString(36).slice(2, 9)}`;
+        const gameCode = generateGameCode();
+        const newGame: InternalGame = {
+          gameCode,
+          players: [{ id: playerId, name: playerName }],
+          bids: [],
+          creatorId: playerId,
+          started: false,
+          lastActivity: Date.now()
+        };
+        games.set(gameCode, newGame);
+        clients.set(socket, { playerId, gameCode });
+        socket.join(gameCode);
+        socket.emit('gameCreated', { game: newGame, playerId });
       } catch (error) {
-        console.error('Failed to handle message:', error);
+        console.error('Failed to create game:', error);
       }
     });
 
-    ws.on('close', () => {
-      console.log('Client disconnected');
-      const clientInfo = clients.get(ws);
+    socket.on('startGame', (payload) => {
+      const { gameCode } = payload;
+      const game = games.get(gameCode);
+      if (game) {
+        updateActivity(gameCode);
+        game.started = true;
+        broadcastGameState(io, gameCode);
+      }
+    });
+
+    socket.on('placeBid', (payload) => {
+      const { gameCode, bid } = payload;
+      const game = games.get(gameCode);
+      if (game && game.started) {
+        updateActivity(gameCode);
+        game.bids.push(bid);
+        broadcastGameState(io, gameCode);
+      }
+    });
+
+    socket.on('newRound', (payload) => {
+      const { gameCode } = payload;
+      const game = games.get(gameCode);
+      if (game) {
+        updateActivity(gameCode);
+        game.bids = [];
+        broadcastGameState(io, gameCode);
+      }
+    });
+
+    socket.on('joinGame', (payload) => {
+      const { gameCode, playerName } = payload;
+      const game = games.get(gameCode);
+      if (game) {
+        updateActivity(gameCode);
+        if (game.players.length >= 4) {
+          socket.emit('error', { message: 'Game is full' });
+          return;
+        }
+        const playerId = `player_${Math.random().toString(36).slice(2, 9)}`;
+        game.players.push({ id: playerId, name: playerName });
+        clients.set(socket, { playerId, gameCode });
+        socket.join(gameCode);
+        socket.emit('gameJoined', { game, playerId });
+        broadcastGameState(io, gameCode);
+      } else {
+        socket.emit('error', { message: 'Game not found' });
+      }
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Client disconnected:', socket.id);
+      const clientInfo = clients.get(socket);
       if (clientInfo) {
         const { gameCode, playerId } = clientInfo;
         const game = games.get(gameCode);
@@ -174,10 +162,10 @@ async function createServer() {
             games.delete(gameCode);
             console.log(`Game ${gameCode} deleted.`);
           } else {
-            broadcastGameState(gameCode);
+            broadcastGameState(io, gameCode);
           }
         }
-        clients.delete(ws);
+        clients.delete(socket);
       }
     });
   });

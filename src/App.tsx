@@ -3,11 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import { useState, useEffect, useRef } from 'react';
+import { io, Socket } from 'socket.io-client';
 import { Suit, SpecialGameType, GameType, Bid } from './types';
-import type { Game } from './types';
+import type { Game, BidValue } from './types';
 
-const HomePage = ({ ws, setPlayerId, setGame, isConnected }: {
-  ws: WebSocket | null;
+const HomePage = ({ socket, setPlayerId, setGame, isConnected }: {
+  socket: Socket | null;
   setPlayerId: (id: string) => void;
   setGame: (game: Game) => void;
   isConnected: boolean;
@@ -17,14 +18,14 @@ const HomePage = ({ ws, setPlayerId, setGame, isConnected }: {
   const [mode, setMode] = useState<'select' | 'create' | 'join'>('select');
 
   const handleCreateGame = () => {
-    if (playerName.trim() && ws) {
-      ws.send(JSON.stringify({ type: 'createGame', payload: { playerName } }));
+    if (playerName.trim() && socket) {
+      socket.emit('createGame', { playerName });
     }
   };
 
   const handleJoinGame = () => {
-    if (playerName.trim() && joinCode.trim() && ws) {
-      ws.send(JSON.stringify({ type: 'joinGame', payload: { playerName, gameCode: joinCode } }));
+    if (playerName.trim() && joinCode.trim() && socket) {
+      socket.emit('joinGame', { playerName, gameCode: joinCode });
     }
   };
 
@@ -121,18 +122,18 @@ const HomePage = ({ ws, setPlayerId, setGame, isConnected }: {
   );
 };
 
-const GamePage = ({ game, playerId, ws }: { game: Game, playerId: string, ws: WebSocket | null }) => {
+const GamePage = ({ game, playerId, socket }: { game: Game, playerId: string, socket: Socket | null }) => {
   const isCreator = game.creatorId === playerId;
 
   const handleNewRound = () => {
-    if (ws) {
-      ws.send(JSON.stringify({ type: 'newRound', payload: { gameCode: game.gameCode } }));
+    if (socket) {
+      socket.emit('newRound', { gameCode: game.gameCode });
     }
   };
 
   const handleStartGame = () => {
-    if (ws) {
-      ws.send(JSON.stringify({ type: 'startGame', payload: { gameCode: game.gameCode } }));
+    if (socket) {
+      socket.emit('startGame', { gameCode: game.gameCode });
     }
   };
 
@@ -165,7 +166,7 @@ const GamePage = ({ game, playerId, ws }: { game: Game, playerId: string, ws: We
         </div>
 
         {game.started ? (
-          <BiddingComponent game={game} playerId={playerId} ws={ws} />
+          <BiddingComponent game={game} playerId={playerId} socket={socket} />
         ) : (
           <div className="text-center text-gray-500">Das Spiel hat noch nicht begonnen.</div>
         )}
@@ -174,7 +175,7 @@ const GamePage = ({ game, playerId, ws }: { game: Game, playerId: string, ws: We
   );
 };
 
-const BiddingComponent = ({ game, playerId, ws }: { game: Game, playerId: string, ws: WebSocket | null }) => {
+const BiddingComponent = ({ game, playerId, socket }: { game: Game, playerId: string, socket: Socket | null }) => {
   const [selectedGameType, setSelectedGameType] = useState<GameType | ''>('');
   const [bidValue, setBidValue] = useState<number | 'Match'>('');
 
@@ -182,7 +183,7 @@ const BiddingComponent = ({ game, playerId, ws }: { game: Game, playerId: string
   const getNumericValue = (val: BidValue): number => {
     if (val === 'Match') return 157;
     if (val === 'Pass') return -1;
-    return val;
+    return val as number;
   };
 
   // Höchstes aktuelles Gebat finden (Pass ignorieren)
@@ -215,7 +216,7 @@ const BiddingComponent = ({ game, playerId, ws }: { game: Game, playerId: string
   }, [currentHighestValue, availableValues, bidValue]);
 
   const handleBid = (isPass: boolean = false) => {
-    if (!ws) return;
+    if (!socket) return;
 
     if (isPass) {
       const passBid: Bid = {
@@ -224,7 +225,7 @@ const BiddingComponent = ({ game, playerId, ws }: { game: Game, playerId: string
         gameType: Suit.ROSEN, // Dummy suit for Pass
         value: 'Pass',
       };
-      ws.send(JSON.stringify({ type: 'placeBid', payload: { gameCode: game.gameCode, bid: passBid } }));
+      socket.emit('placeBid', { gameCode: game.gameCode, bid: passBid });
       return;
     }
 
@@ -237,7 +238,7 @@ const BiddingComponent = ({ game, playerId, ws }: { game: Game, playerId: string
       value: bidValue,
     };
 
-    ws.send(JSON.stringify({ type: 'placeBid', payload: { gameCode: game.gameCode, bid } }));
+    socket.emit('placeBid', { gameCode: game.gameCode, bid });
     // Reset selection where appropriate, but keep auto-suggest working
     setSelectedGameType('');
   };
@@ -332,43 +333,44 @@ export default function App() {
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const ws = useRef<WebSocket | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    // Erkennt automatisch ob ws:// oder wss:// genutzt werden muss
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socket = new WebSocket(`${wsProtocol}//${window.location.host}`);
-    ws.current = socket;
+    const socket = io();
+    socketRef.current = socket;
 
-    socket.onopen = () => {
-      console.log('WebSocket connected');
+    socket.on('connect', () => {
+      console.log('Socket.io connected');
       setIsConnected(true);
-    };
-    socket.onclose = () => {
-      console.log('WebSocket disconnected');
+    });
+    
+    socket.on('disconnect', () => {
+      console.log('Socket.io disconnected');
       setIsConnected(false);
-    };
+    });
 
-    socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      switch (data.type) {
-        case 'gameCreated':
-        case 'gameJoined':
-          setGame(data.game);
-          setPlayerId(data.playerId);
-          setError(null);
-          break;
-        case 'gameStateUpdate':
-          setGame(data.game);
-          break;
-        case 'error':
-          setError(data.message);
-          break;
-      }
-    };
+    socket.on('gameCreated', (data) => {
+      setGame(data.game);
+      setPlayerId(data.playerId);
+      setError(null);
+    });
+
+    socket.on('gameJoined', (data) => {
+      setGame(data.game);
+      setPlayerId(data.playerId);
+      setError(null);
+    });
+
+    socket.on('gameStateUpdate', (data) => {
+      setGame(data.game);
+    });
+
+    socket.on('error', (data) => {
+      setError(data.message);
+    });
 
     return () => {
-      socket.close();
+      socket.disconnect();
     };
   }, []);
 
@@ -379,8 +381,8 @@ export default function App() {
   }
 
   if (!game || !playerId) {
-    return <HomePage ws={ws.current} setPlayerId={setPlayerId} setGame={setGame} isConnected={isConnected} />;
+    return <HomePage socket={socketRef.current} setPlayerId={setPlayerId} setGame={setGame} isConnected={isConnected} />;
   }
 
-  return <GamePage game={game} playerId={playerId} ws={ws.current} />;
+  return <GamePage game={game} playerId={playerId} socket={socketRef.current} />;
 }

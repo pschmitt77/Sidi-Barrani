@@ -52,12 +52,12 @@ Ein Gebot besteht aus:
 ## 4. Technische Umsetzung
 
 - **Architektur**: Client-Server-Modell
-- **Kommunikation**: Echtzeit-Kommunikation über WebSockets.
+- **Kommunikation**: Echtzeit-Kommunikation über WebSockets via socket.io (mit Polling-Fallback).
 - **Frontend**: React mit TypeScript.
 - **Sicherheit**:
   - Unterstützung für HTTPS/SSL (WSS für WebSockets) über Reverse Proxy.
   - Automatische Umleitung von HTTP auf HTTPS in der Produktionsumgebung.
-- **Backend**: Node.js mit Express und ws.
+- **Backend**: Node.js mit Express und socket.io.
 - **Persistenz**:
   - Daten werden flüchtig im RAM gespeichert.
   - Inaktive Spiele werden nach **24 Stunden** automatisch gelöscht.
