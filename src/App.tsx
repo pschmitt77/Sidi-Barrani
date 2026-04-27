@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { QRCodeSVG } from 'qrcode.react';
-import { Share2 } from 'lucide-react';
+import { Share2, X } from 'lucide-react';
 import { Suit, SpecialGameType, GameType, Bid } from './types';
 import type { Game, BidValue } from './types';
 
@@ -169,8 +169,21 @@ const GamePage = ({ game, playerId, socket }: { game: Game, playerId: string, so
     <div className="p-4 bg-gray-100 min-h-screen flex flex-col items-center">
       <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-md relative">
         {showShareModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white p-6 rounded-xl shadow-xl flex flex-col items-center max-w-sm w-full">
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowShareModal(false)}
+          >
+            <div 
+              className="bg-white p-6 rounded-xl shadow-xl flex flex-col items-center max-w-sm w-full relative"
+              onClick={e => e.stopPropagation()}
+            >
+              <button 
+                onClick={() => setShowShareModal(false)} 
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                title="Schliessen"
+              >
+                <X size={24} />
+              </button>
               <h3 className="text-xl font-bold mb-4">Spiel einladen</h3>
               <p className="text-gray-600 mb-6 text-center">Scan den Code oder teile den Link mit deinen Freunden</p>
               <div className="bg-white p-4 rounded-lg shadow-inner border mb-6">
@@ -178,11 +191,12 @@ const GamePage = ({ game, playerId, socket }: { game: Game, playerId: string, so
               </div>
               <p className="font-mono text-2xl font-bold tracking-widest mb-6">{game.gameCode}</p>
               <div className="flex gap-2 w-full">
-                <button onClick={() => setShowShareModal(false)} className="flex-1 bg-gray-200 text-gray-800 p-3 rounded-lg font-bold hover:bg-gray-300">Schliessen</button>
-                {navigator.share && (
-                  <button onClick={handleShareClick} className="flex-1 bg-blue-500 text-white p-3 rounded-lg font-bold hover:bg-blue-600 flex items-center justify-center gap-2">
+                {navigator.share ? (
+                  <button onClick={handleShareClick} className="w-full bg-blue-500 text-white p-3 rounded-lg font-bold hover:bg-blue-600 flex items-center justify-center gap-2">
                     <Share2 size={18} /> Teilen
                   </button>
+                ) : (
+                  <button onClick={() => setShowShareModal(false)} className="w-full bg-gray-200 text-gray-800 p-3 rounded-lg font-bold hover:bg-gray-300">Schliessen</button>
                 )}
               </div>
             </div>
@@ -418,6 +432,12 @@ export default function App() {
     socket.on('connect', () => {
       console.log('Socket.io connected');
       setIsConnected(true);
+
+      const savedPlayerId = sessionStorage.getItem('sidibarrani_playerId');
+      const savedGameCode = sessionStorage.getItem('sidibarrani_gameCode');
+      if (savedPlayerId && savedGameCode) {
+        socket.emit('rejoinGame', { gameCode: savedGameCode, playerId: savedPlayerId });
+      }
     });
     
     socket.on('disconnect', () => {
@@ -428,12 +448,16 @@ export default function App() {
     socket.on('gameCreated', (data) => {
       setGame(data.game);
       setPlayerId(data.playerId);
+      sessionStorage.setItem('sidibarrani_playerId', data.playerId);
+      sessionStorage.setItem('sidibarrani_gameCode', data.game.gameCode);
       setError(null);
     });
 
     socket.on('gameJoined', (data) => {
       setGame(data.game);
       setPlayerId(data.playerId);
+      sessionStorage.setItem('sidibarrani_playerId', data.playerId);
+      sessionStorage.setItem('sidibarrani_gameCode', data.game.gameCode);
       setError(null);
     });
 
@@ -443,6 +467,12 @@ export default function App() {
 
     socket.on('error', (data) => {
       setError(data.message);
+      if (data.message === 'Game not found' || data.message === 'Player not found in game') {
+        sessionStorage.removeItem('sidibarrani_playerId');
+        sessionStorage.removeItem('sidibarrani_gameCode');
+        setGame(null);
+        setPlayerId(null);
+      }
     });
 
     return () => {

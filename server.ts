@@ -150,6 +150,25 @@ async function createServer() {
       }
     });
 
+    socket.on('rejoinGame', (payload) => {
+      const { gameCode, playerId } = payload;
+      const game = games.get(gameCode);
+      if (game) {
+        const playerExists = game.players.some((p) => p.id === playerId);
+        if (playerExists) {
+          updateActivity(gameCode);
+          clients.set(socket, { playerId, gameCode });
+          socket.join(gameCode);
+          socket.emit('gameJoined', { game, playerId });
+          broadcastGameState(io, gameCode);
+        } else {
+          socket.emit('error', { message: 'Player not found in game' });
+        }
+      } else {
+        socket.emit('error', { message: 'Game not found' });
+      }
+    });
+
     socket.on('disconnect', () => {
       console.log('Client disconnected:', socket.id);
       const clientInfo = clients.get(socket);
@@ -157,12 +176,12 @@ async function createServer() {
         const { gameCode, playerId } = clientInfo;
         const game = games.get(gameCode);
         if (game) {
-          game.players = game.players.filter(p => p.id !== playerId);
-          if (game.players.length === 0) {
-            games.delete(gameCode);
-            console.log(`Game ${gameCode} deleted.`);
-          } else {
-            broadcastGameState(io, gameCode);
+          // We no longer remove the player from the game immediately upon disconnect
+          // to allow them to rejoin. It will be cleaned up by the 24h timeout.
+          const activeClients = Array.from(clients.values()).filter(c => c.gameCode === gameCode);
+          if (activeClients.length === 0) {
+            // Optional: log that all clients for this game have disconnected
+            console.log(`All clients for game ${gameCode} disconnected, waiting for timeout.`);
           }
         }
         clients.delete(socket);
