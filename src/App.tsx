@@ -4,6 +4,8 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { QRCodeSVG } from 'qrcode.react';
+import { Share2 } from 'lucide-react';
 import { Suit, SpecialGameType, GameType, Bid } from './types';
 import type { Game, BidValue } from './types';
 
@@ -17,6 +19,15 @@ const HomePage = ({ socket, setPlayerId, setGame, isConnected }: {
   const [joinCode, setJoinCode] = useState('');
   const [mode, setMode] = useState<'select' | 'create' | 'join'>('select');
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const joinParam = params.get('join');
+    if (joinParam) {
+      setJoinCode(joinParam);
+      setMode('join');
+    }
+  }, []);
+
   const handleCreateGame = () => {
     if (playerName.trim() && socket) {
       socket.emit('createGame', { playerName });
@@ -26,6 +37,8 @@ const HomePage = ({ socket, setPlayerId, setGame, isConnected }: {
   const handleJoinGame = () => {
     if (playerName.trim() && joinCode.trim() && socket) {
       socket.emit('joinGame', { playerName, gameCode: joinCode });
+      // clean up url after join
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
   };
 
@@ -124,6 +137,7 @@ const HomePage = ({ socket, setPlayerId, setGame, isConnected }: {
 
 const GamePage = ({ game, playerId, socket }: { game: Game, playerId: string, socket: Socket | null }) => {
   const isCreator = game.creatorId === playerId;
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const handleNewRound = () => {
     if (socket) {
@@ -137,21 +151,70 @@ const GamePage = ({ game, playerId, socket }: { game: Game, playerId: string, so
     }
   };
 
+  const shareUrl = `${window.location.origin}?join=${game.gameCode}`;
+
+  const handleShareClick = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: 'Sidi Barrani',
+        text: `Komm und spiel Sidi Barrani! Code: ${game.gameCode}`,
+        url: shareUrl,
+      }).catch(console.error);
+    } else {
+      setShowShareModal(true);
+    }
+  };
+
   return (
     <div className="p-4 bg-gray-100 min-h-screen flex flex-col items-center">
-      <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-md">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold">Spiel: {game.gameCode}</h1>
-          {isCreator && (
-            <button onClick={handleNewRound} className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 ml-2">
-              Neue Runde
-            </button>
-          )}
-          {isCreator && !game.started && (
-            <button onClick={handleStartGame} className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
-              Spiel starten
-            </button>
-          )}
+      <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-md relative">
+        {showShareModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white p-6 rounded-xl shadow-xl flex flex-col items-center max-w-sm w-full">
+              <h3 className="text-xl font-bold mb-4">Spiel einladen</h3>
+              <p className="text-gray-600 mb-6 text-center">Scan den Code oder teile den Link mit deinen Freunden</p>
+              <div className="bg-white p-4 rounded-lg shadow-inner border mb-6">
+                 <QRCodeSVG value={shareUrl} size={200} />
+              </div>
+              <p className="font-mono text-2xl font-bold tracking-widest mb-6">{game.gameCode}</p>
+              <div className="flex gap-2 w-full">
+                <button onClick={() => setShowShareModal(false)} className="flex-1 bg-gray-200 text-gray-800 p-3 rounded-lg font-bold hover:bg-gray-300">Schliessen</button>
+                {navigator.share && (
+                  <button onClick={handleShareClick} className="flex-1 bg-blue-500 text-white p-3 rounded-lg font-bold hover:bg-blue-600 flex items-center justify-center gap-2">
+                    <Share2 size={18} /> Teilen
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              Spiel: 
+              <button 
+                onClick={() => setShowShareModal(true)} 
+                className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-md hover:bg-gray-200 transition-colors cursor-pointer group"
+                title="Spiel teilen"
+              >
+                <span className="font-mono text-blue-600 tracking-wider">{game.gameCode}</span>
+                <Share2 size={16} className="text-gray-400 group-hover:text-blue-500" />
+              </button>
+            </h1>
+          </div>
+          <div className="flex gap-2">
+            {isCreator && (
+              <button onClick={handleNewRound} className="flex-1 bg-yellow-500 text-white px-4 py-2 rounded font-semibold hover:bg-yellow-600 shadow-sm">
+                Neue Runde
+              </button>
+            )}
+            {isCreator && !game.started && (
+              <button onClick={handleStartGame} className="flex-1 bg-green-500 text-white px-4 py-2 rounded font-semibold hover:bg-green-600 shadow-sm">
+                Spiel starten
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="mb-4">
