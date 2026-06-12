@@ -43,22 +43,22 @@ const HomePage = ({ socket, setPlayerId, setGame, isConnected }: {
   };
 
   return (
-    <div className="p-4 bg-gray-100 min-h-screen flex flex-col items-center justify-center">
-      <div className="w-full max-w-sm bg-white p-6 rounded-lg shadow-md">
-        <h1 className="text-3xl font-bold text-center mb-6 text-slate-800">Sidi Barrani</h1>
+    <div className="p-4 bg-slate-50 min-h-screen flex flex-col items-center justify-center font-sans text-slate-900">
+      <div className="w-full max-w-sm bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h1 className="text-3xl font-bold tracking-tight text-center mb-6 text-slate-900">Sidi Barrani</h1>
         
         {mode === 'select' && (
           <div className="flex flex-col gap-4">
             <button 
               onClick={() => setMode('create')}
-              className="w-full bg-blue-500 text-white py-4 px-2 rounded-lg font-semibold hover:bg-blue-600 transition-colors shadow-sm"
+              className="w-full bg-slate-900 text-white py-4 px-2 rounded-lg font-semibold hover:bg-slate-800 transition-colors"
               disabled={!isConnected}
             >
               Neues Spiel eröffnen
             </button>
             <button 
               onClick={() => setMode('join')}
-              className="w-full bg-green-500 text-white py-4 px-2 rounded-lg font-semibold hover:bg-green-600 transition-colors shadow-sm"
+              className="w-full bg-white text-slate-800 border border-slate-300 py-4 px-2 rounded-lg font-semibold hover:bg-slate-50 transition-colors"
               disabled={!isConnected}
             >
               Einem Spiel beitreten
@@ -77,12 +77,12 @@ const HomePage = ({ socket, setPlayerId, setGame, isConnected }: {
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
               placeholder="Dein Name"
-              className="w-full p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full p-3 border border-slate-300 rounded-lg mb-4 focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none transition-all"
               autoFocus
             />
             <button 
               onClick={handleCreateGame} 
-              className="w-full bg-blue-500 text-white p-3 rounded-lg font-semibold hover:bg-blue-600 disabled:bg-gray-400 mb-4" 
+              className="w-full bg-slate-900 text-white p-3 rounded-lg font-semibold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed mb-4 transition-colors" 
               disabled={!isConnected || !playerName.trim()}
             >
               Spiel erstellen
@@ -104,7 +104,7 @@ const HomePage = ({ socket, setPlayerId, setGame, isConnected }: {
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
               placeholder="Dein Name"
-              className="w-full p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-green-500 outline-none"
+              className="w-full p-3 border border-slate-300 rounded-lg mb-4 focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none transition-all"
               autoFocus
             />
             <input
@@ -112,12 +112,12 @@ const HomePage = ({ socket, setPlayerId, setGame, isConnected }: {
               value={joinCode}
               onChange={(e) => setJoinCode(e.target.value.toLowerCase())}
               placeholder="4-stelliger Spiel-Code"
-              className="w-full p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-green-500 outline-none text-center font-mono text-xl tracking-widest"
+              className="w-full p-3 border border-slate-300 rounded-lg mb-4 focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none text-center font-mono text-xl tracking-widest transition-all uppercase"
               maxLength={4}
             />
             <button 
               onClick={handleJoinGame} 
-              className="w-full bg-green-500 text-white p-3 rounded-lg font-semibold hover:bg-green-600 disabled:bg-gray-400 mb-4" 
+              className="w-full bg-slate-900 text-white p-3 rounded-lg font-semibold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed mb-4 transition-colors" 
               disabled={!isConnected || !playerName.trim() || !joinCode.trim()}
             >
               Beitreten
@@ -160,8 +160,8 @@ const GamePage = ({ game, playerId, socket }: { game: Game, playerId: string, so
   };
 
   return (
-    <div className="p-4 bg-gray-100 min-h-screen flex flex-col items-center">
-      <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-md relative">
+    <div className="p-4 bg-slate-50 min-h-screen flex flex-col items-center font-sans text-slate-900">
+      <div className="w-full max-w-md bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative">
         {showShareModal && (
           <div 
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
@@ -180,17 +180,17 @@ const GamePage = ({ game, playerId, socket }: { game: Game, playerId: string, so
               </button>
               <h3 className="text-xl font-bold mb-4">Spiel einladen</h3>
               <p className="text-gray-600 mb-6 text-center">Scan den Code oder teile den Link mit deinen Freunden</p>
-              <div className="bg-white p-4 rounded-lg shadow-inner border mb-6">
+              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6 flex justify-center items-center">
                  <QRCodeSVG value={shareUrl} size={200} />
               </div>
-              <p className="font-mono text-2xl font-bold tracking-widest mb-6">{game.gameCode}</p>
+              <p className="font-mono text-2xl font-bold tracking-widest mb-6 text-slate-900 uppercase">{game.gameCode}</p>
               <div className="flex gap-2 w-full">
                 {navigator.share ? (
-                  <button onClick={handleShareClick} className="w-full bg-blue-500 text-white p-3 rounded-lg font-bold hover:bg-blue-600 flex items-center justify-center gap-2">
+                  <button onClick={handleShareClick} className="w-full bg-slate-900 text-white p-3 rounded-lg font-semibold hover:bg-slate-800 flex items-center justify-center gap-2 transition-colors">
                     <Share2 size={18} /> Teilen
                   </button>
                 ) : (
-                  <button onClick={() => setShowShareModal(false)} className="w-full bg-gray-200 text-gray-800 p-3 rounded-lg font-bold hover:bg-gray-300">Schliessen</button>
+                  <button onClick={() => setShowShareModal(false)} className="w-full bg-white border border-slate-300 text-slate-800 p-3 rounded-lg font-semibold hover:bg-slate-50 transition-colors">Schliessen</button>
                 )}
               </div>
             </div>
@@ -199,21 +199,21 @@ const GamePage = ({ game, playerId, socket }: { game: Game, playerId: string, so
 
         <div className="flex flex-col gap-3 mb-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold flex items-center gap-2">
+            <h1 className="text-xl font-bold flex items-center gap-2">
               Spiel: 
               <button 
                 onClick={() => setShowShareModal(true)} 
-                className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-md hover:bg-gray-200 transition-colors cursor-pointer group"
+                className="flex items-center gap-2 bg-slate-100 text-slate-800 px-3 py-1 rounded hover:bg-slate-200 transition-colors cursor-pointer group"
                 title="Spiel teilen"
               >
-                <span className="font-mono text-blue-600 tracking-wider">{game.gameCode}</span>
-                <Share2 size={16} className="text-gray-400 group-hover:text-blue-500" />
+                <span className="font-mono tracking-wider uppercase text-sm font-semibold">{game.gameCode}</span>
+                <Share2 size={16} className="text-slate-400 group-hover:text-slate-600" />
               </button>
             </h1>
           </div>
           <div className="flex gap-2">
             {isCreator && !game.started && (
-              <button onClick={handleStartGame} className="w-full bg-green-500 text-white px-4 py-2 rounded font-semibold hover:bg-green-600 shadow-sm">
+              <button onClick={handleStartGame} className="w-full bg-slate-900 text-white px-4 py-2 rounded-lg font-semibold hover:bg-slate-800 transition-colors">
                 Spiel starten
               </button>
             )}
@@ -221,12 +221,12 @@ const GamePage = ({ game, playerId, socket }: { game: Game, playerId: string, so
         </div>
 
         <div className="mb-4">
-          <h2 className="text-lg font-bold border-b-2 border-gray-100 pb-2 mb-3 px-1 flex items-center justify-between">Spieler</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wider border-b border-slate-200 pb-2 mb-3 px-1 flex items-center justify-between text-slate-500">Spieler</h2>
           <div className="grid grid-cols-2 gap-2">
             {game.players.map(p => (
-              <div key={p.id} className={`p-2 rounded-md bg-white shadow-sm border border-gray-200 flex items-center justify-between ${p.id === playerId ? 'font-bold text-indigo-700' : 'text-gray-700'}`}>
-                <span className="truncate">{p.name}</span>
-                {p.id === game.creatorId && <span className="text-[10px] uppercase tracking-wider text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded ml-2">Ersteller</span>}
+              <div key={p.id} className={`px-3 py-2 rounded-lg bg-white border flex items-center justify-between ${p.id === playerId ? 'font-semibold text-slate-900 border-slate-800 bg-slate-50' : 'text-slate-600 border-slate-200'}`}>
+                <span className="truncate text-sm">{p.name}</span>
+                {p.id === game.creatorId && <span className="text-[9px] uppercase tracking-wider text-slate-400 border border-slate-200 bg-white px-1.5 py-0.5 rounded ml-2">Ersteller</span>}
               </div>
             ))}
           </div>
@@ -327,28 +327,29 @@ const BiddingComponent = ({ game, playerId, socket }: { game: Game, playerId: st
   };
 
   const getSuitDisplay = (suit: string) => {
+    const baseClass = "bg-white border border-slate-300 text-slate-700 hover:border-slate-800 hover:text-slate-900";
     switch (suit) {
-      case 'Eicheln': return { color: 'bg-[#1b4332] hover:bg-[#2d6a4f] text-white', label: 'Eicheln' };
-      case 'Schellen': return { color: 'bg-[#f9a825] hover:bg-[#fbc02d] text-black', label: 'Schellen' };
-      case 'Schilten': return { color: 'bg-[#00509d] hover:bg-[#003f88] text-white', label: 'Schilten' };
-      case 'Rosen': return { color: 'bg-[#9d0208] hover:bg-[#6a040f] text-white', label: 'Rosen' };
-      case 'Obeabe': return { color: 'bg-gray-600 hover:bg-gray-700 text-white', label: 'Obeabe' };
-      case 'Uneufe': return { color: 'bg-gray-600 hover:bg-gray-700 text-white', label: 'Uneufe' };
-      default: return { color: 'bg-gray-600 hover:bg-gray-700 text-white', label: suit };
+      case 'Eicheln': return { color: baseClass, label: 'Eicheln', icon: '/eichel.svg' };
+      case 'Schellen': return { color: baseClass, label: 'Schellen', icon: '/schellen.svg' };
+      case 'Schilten': return { color: baseClass, label: 'Schilten', icon: '/schilten.svg' };
+      case 'Rosen': return { color: baseClass, label: 'Rosen', icon: '/rose.svg' };
+      case 'Obeabe': return { color: baseClass, label: 'Obeabe', icon: '/obeabe.svg' };
+      case 'Uneufe': return { color: baseClass, label: 'Uneufe', icon: '/uneufe.svg' };
+      default: return { color: baseClass, label: suit, icon: '' };
     }
   };
 
   return (
     <div>
-      <h2 className="text-lg font-bold border-b-2 border-gray-100 pb-2 mb-3 px-1 flex items-center justify-between">Bieten</h2>
-      <div className="flex gap-2 mb-2">
+      <h2 className="text-sm font-bold uppercase tracking-wider border-b border-slate-200 pb-2 mb-3 px-1 flex items-center justify-between text-slate-500">Bieten</h2>
+      <div className="flex gap-2 mb-3">
         <select 
           value={bidValue} 
           onChange={e => {
             const val = e.target.value;
             setBidValue(val === 'Match' ? 'Match' : Number(val));
           }} 
-          className="w-full p-3 border-2 rounded-lg bg-white font-semibold outline-none focus:border-indigo-500" 
+          className="w-full p-3 border border-slate-300 rounded-lg bg-white font-semibold outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 text-slate-900 transition-colors" 
           disabled={availableValues.length === 0}
         >
           <option value="" disabled>Wert wählen...</option>
@@ -366,9 +367,10 @@ const BiddingComponent = ({ game, playerId, socket }: { game: Game, playerId: st
               key={gt} 
               onClick={() => handleBid(gt)} 
               disabled={availableValues.length === 0 || bidValue === ''}
-              className={`p-1 min-h-[44px] rounded-md font-bold text-[11px] sm:text-xs transition-all transform active:scale-95 shadow-sm text-center break-words leading-tight flex items-center justify-center bg-opacity-100 disabled:opacity-50 disabled:cursor-not-allowed ${display.color}`}
+              className={`p-2 min-h-[44px] rounded-lg font-semibold text-[11px] sm:text-xs transition-all active:scale-95 text-center break-words leading-tight flex flex-col gap-1 items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed ${display.color}`}
             >
-              {display.label}
+              {display.icon && <img src={display.icon} alt={display.label} className="w-6 h-6 object-contain pointer-events-none" />}
+              <span>{display.label}</span>
             </button>
           );
         })}
@@ -382,37 +384,38 @@ const BiddingComponent = ({ game, playerId, socket }: { game: Game, playerId: st
               key={gt} 
               onClick={() => handleBid(gt)} 
               disabled={availableValues.length === 0 || bidValue === ''}
-              className={`p-1 min-h-[44px] rounded-md font-bold text-[11px] sm:text-xs transition-all transform active:scale-95 shadow-sm text-center break-words leading-tight flex items-center justify-center bg-opacity-100 disabled:opacity-50 disabled:cursor-not-allowed ${display.color}`}
+              className={`p-2 min-h-[44px] rounded-lg font-semibold text-[11px] sm:text-xs transition-all active:scale-95 text-center break-words leading-tight flex flex-col gap-1 items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed ${display.color}`}
             >
-              {display.label}
+              {display.icon && <img src={display.icon} alt={display.label} className="w-6 h-6 object-contain pointer-events-none" />}
+              <span>{display.label}</span>
             </button>
           );
         })}
         <button 
           onClick={() => handleBid('Pass')} 
-          className="col-span-2 bg-gray-400 text-white p-1 min-h-[44px] rounded-md font-bold text-[11px] sm:text-xs hover:bg-gray-500 transition-all shadow-sm active:scale-95 flex items-center justify-center"
+          className="col-span-2 bg-slate-100 border border-slate-200 text-slate-700 p-2 min-h-[44px] rounded-lg font-semibold text-[11px] sm:text-xs hover:bg-slate-200 hover:text-slate-900 transition-all active:scale-95 flex items-center justify-center"
         >
           Ich passe
         </button>
       </div>
 
-      {errorMsg && <p className="text-red-500 text-sm font-semibold mb-2 text-center">{errorMsg}</p>}
+      {errorMsg && <p className="text-red-600 text-sm font-medium mb-3 text-center bg-red-50 p-2 rounded-lg border border-red-100">{errorMsg}</p>}
 
       <div className="mt-8">
-        <h3 className="text-lg font-bold border-b-2 border-gray-100 pb-2 mb-3 px-1 flex items-center justify-between">
+        <h3 className="text-sm font-bold uppercase tracking-wider border-b border-slate-200 pb-2 mb-3 px-1 flex items-center justify-between text-slate-500">
           <span>Aktuelle Gebote</span>
           {isCreator && (
             <button 
               onClick={handleNewRound} 
-              className="text-sm font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors"
+              className="text-xs font-semibold text-slate-500 hover:text-slate-900 flex items-center gap-1 transition-colors"
             >
-              <RotateCcw size={16} /> <span>Neue Runde</span>
+              <RotateCcw size={14} /> <span>Neue Runde</span>
             </button>
           )}
         </h3>
         <div className="space-y-2">
           {game.bids.length === 0 ? (
-            <p className="text-gray-400 italic text-center py-4 bg-gray-50 rounded-lg">Noch keine Gebote vorhanden</p>
+            <p className="text-slate-400 italic text-center py-4 bg-slate-50 rounded-lg text-sm border border-slate-100">Noch keine Gebote vorhanden</p>
           ) : (
             [...game.bids].reverse().map((b, index, arr) => {
               const originalIndex = arr.length - 1 - index;
@@ -422,19 +425,19 @@ const BiddingComponent = ({ game, playerId, socket }: { game: Game, playerId: st
               return (
                 <div 
                   key={originalIndex} 
-                  className={`p-3 rounded-lg border-l-4 shadow-sm flex justify-between items-center ${
-                    b.playerId === playerId ? 'bg-indigo-50 border-indigo-500' : 'bg-white border-gray-300'
+                  className={`p-3 rounded-lg border flex justify-between items-center transition-colors ${
+                    b.playerId === playerId ? 'bg-slate-50 border-slate-800 text-slate-900' : 'bg-white border-slate-200 text-slate-700'
                   } ${b.value === 'Pass' ? 'opacity-60' : ''}`}
                 >
-                  <span className="font-bold">{b.playerName}</span>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-3 py-1 rounded-full text-sm font-mono font-bold ${b.value === 'Pass' ? 'bg-gray-200 text-gray-500' : 'bg-gray-100'}`}>
+                  <span className="font-semibold text-sm">{b.playerName}</span>
+                  <div className="flex items-center gap-3">
+                    <span className={`px-2 py-0.5 rounded text-xs font-mono font-medium border ${b.value === 'Pass' ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-white border-slate-300 text-slate-900'}`}>
                       {b.value === 'Pass' ? 'Passe' : `${b.gameType} ${b.value === 'Match' ? 'Match' : b.value}`}
                     </span>
                     {canDelete && (
                       <button 
                         onClick={handleDeleteLastBid} 
-                        className="text-red-500 hover:bg-red-100 p-1.5 rounded-full transition-colors"
+                        className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors -mr-1"
                         title="Gebot löschen"
                       >
                         <Trash2 size={16} />
