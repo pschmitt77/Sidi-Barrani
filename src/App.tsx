@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { QRCodeSVG } from 'qrcode.react';
-import { Share2, X } from 'lucide-react';
+import { Share2, X, RotateCcw, Trash2 } from 'lucide-react';
 import { Suit, SpecialGameType, GameType, Bid } from './types';
 import type { Game, BidValue } from './types';
 
@@ -139,12 +139,6 @@ const GamePage = ({ game, playerId, socket }: { game: Game, playerId: string, so
   const isCreator = game.creatorId === playerId;
   const [showShareModal, setShowShareModal] = useState(false);
 
-  const handleNewRound = () => {
-    if (socket) {
-      socket.emit('newRound', { gameCode: game.gameCode });
-    }
-  };
-
   const handleStartGame = () => {
     if (socket) {
       socket.emit('startGame', { gameCode: game.gameCode });
@@ -203,7 +197,7 @@ const GamePage = ({ game, playerId, socket }: { game: Game, playerId: string, so
           </div>
         )}
 
-        <div className="flex flex-col gap-4 mb-6">
+        <div className="flex flex-col gap-3 mb-4">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold flex items-center gap-2">
               Spiel: 
@@ -218,13 +212,8 @@ const GamePage = ({ game, playerId, socket }: { game: Game, playerId: string, so
             </h1>
           </div>
           <div className="flex gap-2">
-            {isCreator && (
-              <button onClick={handleNewRound} className="flex-1 bg-yellow-500 text-white px-4 py-2 rounded font-semibold hover:bg-yellow-600 shadow-sm">
-                Neue Runde
-              </button>
-            )}
             {isCreator && !game.started && (
-              <button onClick={handleStartGame} className="flex-1 bg-green-500 text-white px-4 py-2 rounded font-semibold hover:bg-green-600 shadow-sm">
+              <button onClick={handleStartGame} className="w-full bg-green-500 text-white px-4 py-2 rounded font-semibold hover:bg-green-600 shadow-sm">
                 Spiel starten
               </button>
             )}
@@ -232,7 +221,7 @@ const GamePage = ({ game, playerId, socket }: { game: Game, playerId: string, so
         </div>
 
         <div className="mb-4">
-          <h2 className="text-xl font-semibold mb-2">Spieler</h2>
+          <h2 className="text-lg font-bold border-b-2 border-gray-100 pb-2 mb-3 px-1 flex items-center justify-between">Spieler</h2>
           <div className="grid grid-cols-2 gap-2">
             {game.players.map(p => (
               <div key={p.id} className={`p-2 rounded-md bg-white shadow-sm border border-gray-200 flex items-center justify-between ${p.id === playerId ? 'font-bold text-indigo-700' : 'text-gray-700'}`}>
@@ -254,9 +243,22 @@ const GamePage = ({ game, playerId, socket }: { game: Game, playerId: string, so
 };
 
 const BiddingComponent = ({ game, playerId, socket }: { game: Game, playerId: string, socket: Socket | null }) => {
-  const [selectedGameType, setSelectedGameType] = useState<GameType | ''>('');
   const [bidValue, setBidValue] = useState<number | 'Match'>('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  const isCreator = game.creatorId === playerId;
+
+  const handleNewRound = () => {
+    if (socket) {
+      socket.emit('newRound', { gameCode: game.gameCode });
+    }
+  };
+
+  const handleDeleteLastBid = () => {
+    if (socket) {
+      socket.emit('deleteLastBid', { gameCode: game.gameCode, playerId });
+    }
+  };
 
   // Helper zum Vergleich von Werten
   const getNumericValue = (val: BidValue): number => {
@@ -294,11 +296,11 @@ const BiddingComponent = ({ game, playerId, socket }: { game: Game, playerId: st
     }
   }, [currentHighestValue, availableValues, bidValue]);
 
-  const handleBid = (isPass: boolean = false) => {
+  const handleBid = (type: GameType | 'Pass') => {
     if (!socket) return;
     setErrorMsg('');
 
-    if (isPass) {
+    if (type === 'Pass') {
       const passBid: Bid = {
         playerId,
         playerName: game.players.find(p => p.id === playerId)?.name || 'Unknown',
@@ -309,23 +311,19 @@ const BiddingComponent = ({ game, playerId, socket }: { game: Game, playerId: st
       return;
     }
 
-    if (!selectedGameType) {
-      setErrorMsg('Bitte wähle eine Farbe oder ein Spiel.');
+    if (bidValue === '') {
+      setErrorMsg('Bitte wähle zuerst einen Wert.');
       return;
     }
-
-    if (bidValue === '') return;
 
     const bid: Bid = {
       playerId,
       playerName: game.players.find(p => p.id === playerId)?.name || 'Unknown',
-      gameType: selectedGameType,
+      gameType: type,
       value: bidValue,
     };
 
     socket.emit('placeBid', { gameCode: game.gameCode, bid });
-    // Reset selection where appropriate, but keep auto-suggest working
-    setSelectedGameType('');
   };
 
   const getSuitDisplay = (suit: string) => {
@@ -342,21 +340,7 @@ const BiddingComponent = ({ game, playerId, socket }: { game: Game, playerId: st
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-2">Bieten</h2>
-      <div className="grid grid-cols-2 gap-2 mb-6">
-        {(Object.values(Suit) as GameType[]).concat(Object.values(SpecialGameType)).map(gt => {
-          const display = getSuitDisplay(gt as string);
-          return (
-            <button 
-              key={gt} 
-              onClick={() => { setSelectedGameType(gt); setErrorMsg(''); }} 
-              className={`p-3 rounded-lg font-bold transition-all transform active:scale-95 shadow-sm ${selectedGameType === gt ? 'ring-4 ring-black ring-opacity-50' : ''} ${display.color}`}
-            >
-              {display.label}
-            </button>
-          );
-        })}
-      </div>
+      <h2 className="text-lg font-bold border-b-2 border-gray-100 pb-2 mb-3 px-1 flex items-center justify-between">Bieten</h2>
       <div className="flex gap-2 mb-2">
         <select 
           value={bidValue} 
@@ -364,7 +348,7 @@ const BiddingComponent = ({ game, playerId, socket }: { game: Game, playerId: st
             const val = e.target.value;
             setBidValue(val === 'Match' ? 'Match' : Number(val));
           }} 
-          className="flex-1 p-3 border-2 rounded-lg bg-white font-semibold outline-none focus:border-indigo-500" 
+          className="w-full p-3 border-2 rounded-lg bg-white font-semibold outline-none focus:border-indigo-500" 
           disabled={availableValues.length === 0}
         >
           <option value="" disabled>Wert wählen...</option>
@@ -372,45 +356,94 @@ const BiddingComponent = ({ game, playerId, socket }: { game: Game, playerId: st
             <option key={val} value={val}>{val === 'Match' ? 'Match (157)' : val}</option>
           ))}
         </select>
+      </div>
+
+      <div className="grid grid-cols-4 gap-1 mb-2">
+        {(Object.values(Suit) as GameType[]).map(gt => {
+          const display = getSuitDisplay(gt as string);
+          return (
+            <button 
+              key={gt} 
+              onClick={() => handleBid(gt)} 
+              disabled={availableValues.length === 0 || bidValue === ''}
+              className={`p-1 min-h-[44px] rounded-md font-bold text-[11px] sm:text-xs transition-all transform active:scale-95 shadow-sm text-center break-words leading-tight flex items-center justify-center bg-opacity-100 disabled:opacity-50 disabled:cursor-not-allowed ${display.color}`}
+            >
+              {display.label}
+            </button>
+          );
+        })}
+      </div>
+      
+      <div className="grid grid-cols-4 gap-1 mb-6">
+        {(Object.values(SpecialGameType) as GameType[]).map(gt => {
+          const display = getSuitDisplay(gt as string);
+          return (
+            <button 
+              key={gt} 
+              onClick={() => handleBid(gt)} 
+              disabled={availableValues.length === 0 || bidValue === ''}
+              className={`p-1 min-h-[44px] rounded-md font-bold text-[11px] sm:text-xs transition-all transform active:scale-95 shadow-sm text-center break-words leading-tight flex items-center justify-center bg-opacity-100 disabled:opacity-50 disabled:cursor-not-allowed ${display.color}`}
+            >
+              {display.label}
+            </button>
+          );
+        })}
         <button 
-          onClick={() => handleBid(true)} 
-          className="flex-1 bg-gray-400 text-white p-3 rounded-lg font-bold hover:bg-gray-500 transition-all shadow-sm active:scale-95"
+          onClick={() => handleBid('Pass')} 
+          className="col-span-2 bg-gray-400 text-white p-1 min-h-[44px] rounded-md font-bold text-[11px] sm:text-xs hover:bg-gray-500 transition-all shadow-sm active:scale-95 flex items-center justify-center"
         >
           Ich passe
         </button>
       </div>
-      
+
       {errorMsg && <p className="text-red-500 text-sm font-semibold mb-2 text-center">{errorMsg}</p>}
 
-      <button 
-        onClick={() => handleBid(false)} 
-        className="w-full bg-slate-800 text-white p-3 rounded-lg font-bold hover:bg-slate-900 transition-all shadow-sm active:scale-95 disabled:opacity-50" 
-        disabled={bidValue === '' || availableValues.length === 0}
-      >
-        Bieten
-      </button>
-
       <div className="mt-8">
-        <h3 className="text-lg font-bold border-b-2 border-gray-100 pb-2 mb-3 px-1 flex items-center">
-          Aktuelle Gebote
+        <h3 className="text-lg font-bold border-b-2 border-gray-100 pb-2 mb-3 px-1 flex items-center justify-between">
+          <span>Aktuelle Gebote</span>
+          {isCreator && (
+            <button 
+              onClick={handleNewRound} 
+              className="text-sm font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors"
+            >
+              <RotateCcw size={16} /> <span>Neue Runde</span>
+            </button>
+          )}
         </h3>
         <div className="space-y-2">
           {game.bids.length === 0 ? (
             <p className="text-gray-400 italic text-center py-4 bg-gray-50 rounded-lg">Noch keine Gebote vorhanden</p>
           ) : (
-            game.bids.map((b, i) => (
-              <div 
-                key={i} 
-                className={`p-3 rounded-lg border-l-4 shadow-sm flex justify-between items-center ${
-                  b.playerId === playerId ? 'bg-indigo-50 border-indigo-500' : 'bg-white border-gray-300'
-                } ${b.value === 'Pass' ? 'opacity-60' : ''}`}
-              >
-                <span className="font-bold">{b.playerName}</span>
-                <span className={`px-3 py-1 rounded-full text-sm font-mono font-bold ${b.value === 'Pass' ? 'bg-gray-200 text-gray-500' : 'bg-gray-100'}`}>
-                  {b.value === 'Pass' ? 'Passe' : `${b.gameType} ${b.value === 'Match' ? 'Match' : b.value}`}
-                </span>
-              </div>
-            )).reverse() 
+            [...game.bids].reverse().map((b, index, arr) => {
+              const originalIndex = arr.length - 1 - index;
+              const isLastBid = originalIndex === game.bids.length - 1;
+              const canDelete = isLastBid && b.playerId === playerId;
+
+              return (
+                <div 
+                  key={originalIndex} 
+                  className={`p-3 rounded-lg border-l-4 shadow-sm flex justify-between items-center ${
+                    b.playerId === playerId ? 'bg-indigo-50 border-indigo-500' : 'bg-white border-gray-300'
+                  } ${b.value === 'Pass' ? 'opacity-60' : ''}`}
+                >
+                  <span className="font-bold">{b.playerName}</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-3 py-1 rounded-full text-sm font-mono font-bold ${b.value === 'Pass' ? 'bg-gray-200 text-gray-500' : 'bg-gray-100'}`}>
+                      {b.value === 'Pass' ? 'Passe' : `${b.gameType} ${b.value === 'Match' ? 'Match' : b.value}`}
+                    </span>
+                    {canDelete && (
+                      <button 
+                        onClick={handleDeleteLastBid} 
+                        className="text-red-500 hover:bg-red-100 p-1.5 rounded-full transition-colors"
+                        title="Gebot löschen"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
       </div>

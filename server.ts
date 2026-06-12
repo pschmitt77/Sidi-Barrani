@@ -150,6 +150,19 @@ async function createServer() {
       }
     });
 
+    socket.on('deleteLastBid', (payload) => {
+      const { gameCode, playerId } = payload;
+      const game = games.get(gameCode);
+      if (game && game.started && game.bids.length > 0) {
+        const lastBid = game.bids[game.bids.length - 1];
+        if (lastBid.playerId === playerId) {
+          updateActivity(gameCode);
+          game.bids.pop();
+          broadcastGameState(io, gameCode);
+        }
+      }
+    });
+
     socket.on('rejoinGame', (payload) => {
       const { gameCode, playerId } = payload;
       const game = games.get(gameCode);
